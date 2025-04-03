@@ -1,0 +1,10 @@
+{
+  "$schema": "https://docs.aica.tech/schemas/1-1-1/component.schema.json",
+  "name": "Template Python Component",
+  "description": {
+    "brief": "Brief description of the component",
+    "details": "Detailed description of the component."
+  },
+  "registration": "template_component_package::PyComponent",
+  "inherits": "modulo_components::Component"
+}
