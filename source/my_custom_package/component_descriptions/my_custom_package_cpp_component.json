@@ -1,10 +1,10 @@
 {
   "$schema": "https://docs.aica.tech/schemas/1-1-1/component.schema.json",
-  "name": "Template Python Lifecycle Component",
+  "name": "Template CPP Component",
   "description": {
     "brief": "Brief description of the component",
     "details": "Detailed description of the component."
   },
-  "registration": "template_component_package::PyLifecycleComponent",
-  "inherits": "modulo_components::LifecycleComponent"
+  "registration": "my_custom_package::CPPComponent",
+  "inherits": "modulo_components::Component"
 }

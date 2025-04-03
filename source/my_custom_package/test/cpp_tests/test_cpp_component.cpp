@@ -24,10 +24,10 @@ protected:
 
 
 TEST_F(TestCPPComponent, test_component_load) {
-  auto resources = manager_->get_component_resources("template_component_package");
+  auto resources = manager_->get_component_resources("my_custom_package");
   bool component_exists = false;
   for (auto& resource : resources) {
-    if (resource.first == "template_component_package::CPPComponent") {
+    if (resource.first == "my_custom_package::CPPComponent") {
       component_exists = true;
       EXPECT_TRUE(rcpputils::fs::exists(rcpputils::fs::path(resource.second)));
       auto factory = manager_->create_component_factory(resource);

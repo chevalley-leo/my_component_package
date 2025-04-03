@@ -2,7 +2,7 @@
 
 #include <modulo_components/LifecycleComponent.hpp>
 
-namespace template_component_package {
+namespace my_custom_package {
 class CPPLifecycleComponent : public modulo_components::LifecycleComponent {
 public:
   explicit CPPLifecycleComponent(const rclcpp::NodeOptions& options);
@@ -15,4 +15,4 @@ protected:
   bool on_deactivate_callback() override;
   void on_step_callback() override;
 };
-}  // namespace template_component_package
+}  // namespace my_custom_package

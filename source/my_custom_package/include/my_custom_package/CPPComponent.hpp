@@ -2,7 +2,7 @@
 
 #include <modulo_components/Component.hpp>
 
-namespace template_component_package {
+namespace my_custom_package {
 class CPPComponent : public modulo_components::Component {
 public:
   explicit CPPComponent(const rclcpp::NodeOptions& options);
@@ -12,4 +12,4 @@ protected:
 
   bool on_execute_callback() override;
 };
-}  // namespace template_component_package
+}  // namespace my_custom_package

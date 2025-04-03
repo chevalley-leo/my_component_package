@@ -25,22 +25,22 @@ image = "v2.0.0-jazzy"
 "@aica/foss/control-libraries" = "v9.0.0"
 "@aica/foss/modulo" = "v5.0.1"
 
-[build.packages.template-component-package]
-source = "./source/template_component_package"
+[build.packages.my-custom-package]
+source = "./source/my_custom_package"
 
 ## add any required apt dependencies for the custom package.
 ## these packages will be available during the build but also in the final image,
 ## so they are useful for dynamic libraries
-# [build.packages.template-component-package.dependencies.apt]
+# [build.packages.my-custom-package.dependencies.apt]
 # libyaml-cpp-dev = "*"
 
 ## by default, we will install any pip packages in `${package_source}/requirements.txt`
 ## but you can customize the name of the requirements file, e.g.
-# [build.packages.template-component-package.dependencies.pip]
+# [build.packages.my-custom-package.dependencies.pip]
 # file = "custom_requirements.txt"
 
 ## otherwise you can specify the pip packages directly
-# [build.packages.template-component-package.dependencies.pip.packages]
+# [build.packages.my-custom-package.dependencies.pip.packages]
 # numpy = "1.0.0"
 
 ## if the AICA package contains multiple ROS packages, repeat the process for each ROS package.

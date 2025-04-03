@@ -1,0 +1,47 @@
+{
+  "name": "MoveToPosition",
+  "description": {
+    "brief": "A component to move to a defined position in Cartesian space. v2",
+    "details": "This component defines a target position in Cartesian coordinates (x, y, z) and an orientation in quaternion format. The component can be configured to move to a new position at runtime."
+  },
+  "registration": "move_to_position_package::MoveToPosition",
+  "inherits": "modulo_components::Component",
+  "parameters": [
+    {
+      "display_name": "Target X",
+      "description": "X-coordinate of the target position",
+      "parameter_name": "target_x",
+      "parameter_type": "float",
+      "default_value": "100.0"
+    },
+    {
+      "display_name": "Target Y",
+      "description": "Y-coordinate of the target position",
+      "parameter_name": "target_y",
+      "parameter_type": "float",
+      "default_value": "100.0"
+    },
+    {
+      "display_name": "Target Z",
+      "description": "Z-coordinate of the target position",
+      "parameter_name": "target_z",
+      "parameter_type": "float",
+      "default_value": "100.0"
+    },
+    {
+      "display_name": "Target Orientation",
+      "description": "Quaternion orientation of the target position",
+      "parameter_name": "target_orientation",
+      "parameter_type": "string",
+      "default_value": "[0.0, 0.0, 0.0, 1.0]"
+    }
+  ],
+  "outputs": [
+    {
+      "display_name": "Target Pose",
+      "description": "The Cartesian pose to move to",
+      "signal_name": "target_pose",
+      "signal_type": "cartesian_pose"
+    }
+  ]
+}

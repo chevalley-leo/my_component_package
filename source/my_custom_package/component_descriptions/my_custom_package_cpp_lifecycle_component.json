@@ -5,6 +5,6 @@
     "brief": "Brief description of the component",
     "details": "Detailed description of the component."
   },
-  "registration": "template_component_package::CPPLifecycleComponent",
+  "registration": "my_custom_package::CPPLifecycleComponent",
   "inherits": "modulo_components::LifecycleComponent"
 }
