@@ -1,4 +1,5 @@
 {
+  "$schema": "https://docs.aica.tech/schemas/1-1-1/component.schema.json",
   "name": "MoveToPosition",
   "description": {
     "brief": "A component to move to a defined position in Cartesian space. v4.2",
@@ -11,29 +12,29 @@
       "display_name": "Target X",
       "description": "X-coordinate of the target position",
       "parameter_name": "target_x",
-      "parameter_type": "float",
+      "parameter_type": "double",
       "default_value": "100.0"
     },
     {
       "display_name": "Target Y",
       "description": "Y-coordinate of the target position",
       "parameter_name": "target_y",
-      "parameter_type": "float",
+      "parameter_type": "double",
       "default_value": "100.0"
     },
     {
       "display_name": "Target Z",
       "description": "Z-coordinate of the target position",
       "parameter_name": "target_z",
-      "parameter_type": "float",
+      "parameter_type": "double",
       "default_value": "100.0"
     },
     {
       "display_name": "Target Orientation",
       "description": "Quaternion orientation of the target position",
       "parameter_name": "target_orientation",
-      "parameter_type": "string",
-      "default_value": "[0.0, 0.0, 0.0, 1.0]"
+      "parameter_type": "double_array",
+      "default_value": "[1.0, 0.0, 0.0, 0.0]"
     }
   ],
   "outputs": [
