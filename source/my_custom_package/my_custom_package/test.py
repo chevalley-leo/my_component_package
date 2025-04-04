@@ -13,7 +13,8 @@ class MoveToPositionComponent(Component):
         self._param_x = sr.Parameter("target_x", 100.0, sr.ParameterType.DOUBLE)
         self._param_y = sr.Parameter("target_y", 100.0, sr.ParameterType.DOUBLE)
         self._param_z = sr.Parameter("target_z", 100.0, sr.ParameterType.DOUBLE)
-        self._param_orientation = sr.Parameter("target_orientation", "[0.0, 0.0, 0.0, 1.0]", sr.ParameterType.STRING)
+        self._param_orientation = sr.Parameter("target_orientation", "[0.0, 0.0, 0.0, 1.0]", sr.ParameterType.STRING)¨
+        self.target_position.set_orientation([1.0, 0.0, 0.0, 0.0])  # Orientation par défaut
 
         # Ajout des paramètres au composant
         self.add_parameter(self._param_x, "X-coordinate of target position")
