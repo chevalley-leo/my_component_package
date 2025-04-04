@@ -16,9 +16,6 @@ class PyComponent(Component):
     def __init__(self, node_name: str, *args, **kwargs):
         super().__init__(node_name, *args, **kwargs)
         # add parameters, inputs and outputs here
-        # define a parameter as a class attribute, then add it to the component using the attribute name
-        self._parameter_a = sr.Parameter("A", sr.ParameterType.INT)
-        self.add_parameter("_parameter_a", "Description of parameter A")
 
                 # define input data objects as a class attribute
         self._input_number = 0

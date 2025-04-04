@@ -1,6 +1,6 @@
 import pytest
 
-from my_custom_package.py_component import PyComponent
+from bonjour.source.my_custom_package.my_custom_package.test_camera import PyComponent
 
 
 @pytest.fixture()
