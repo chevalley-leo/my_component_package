@@ -1,0 +1,25 @@
+{
+    "name": "template-component-package",
+    "containerUser": "ros2",
+    "initializeCommand": [
+        "docker",
+        "build",
+        "--file=aica-package.toml",
+        "--target=development",
+        "--build-arg=config.signing.enabled=false",
+        "--tag=aica-technology/my-custom-package:development",
+        "."
+    ],
+    "image": "aica-technology/my-custom-package:development",
+    "postStartCommand": "rm -r /home/ros2/ws/src/my_custom_package && ln -s ${containerWorkspaceFolder}/source/my_custom_package /home/ros2/ws/src/my_custom_package",
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "ms-vscode.cpptools-extension-pack",
+          "llvm-vs-code-extensions.vscode-clangd",
+          "xaver.clang-format",
+          "charliermarsh.ruff"
+        ]
+      }
+    }
+  }

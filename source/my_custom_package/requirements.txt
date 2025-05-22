@@ -1,1 +1,9 @@
 # list any python requirements
+pyserial
+ezdxf
+open3d
+numpy
+opencv-python
+scipy
+scikit-learn
+cv_bridge

@@ -1,29 +1,17 @@
-#syntax=ghcr.io/aica-technology/package-builder:v1.2.1
+#syntax=ghcr.io/aica-technology/package-builder:v1.4.0
 
 [metadata]
 version = "0.0.1"
 ## add a description of the AICA package
 # description = "My custom package"
 
-## a metadata name for the collection is required when bundling multiple packages together.
-## the collection name should be formatted like a Docker image name,
-## and the ROS equivalent collection name must be formatted in lower_snake_case
-# [metadata.collection]
-# name = "template-custom-collection"
-# ros-name = "template_custom_collection"
-
 [build]
 type = "ros"
-image = "v2.0.0-jazzy"
-
-[build.cmake-args]
-## add any cmake args here, e.g.
-# SOME_FLAG = "ON"
-## you can override them in the CLI with `--build-arg config.build.cmake_args.SOME_FLAG=OFF`
+image = "v2.0.4-jazzy"
 
 [build.dependencies]
-"@aica/foss/control-libraries" = "v9.0.0"
-"@aica/foss/modulo" = "v5.0.1"
+"@aica/foss/control-libraries" = "v9.1.0"
+"@aica/foss/modulo" = "v5.2.0"
 
 [build.packages.my-custom-package]
 source = "./source/my_custom_package"
@@ -31,18 +19,5 @@ source = "./source/my_custom_package"
 ## add any required apt dependencies for the custom package.
 ## these packages will be available during the build but also in the final image,
 ## so they are useful for dynamic libraries
-# [build.packages.my-custom-package.dependencies.apt]
-# libyaml-cpp-dev = "*"
-
-## by default, we will install any pip packages in `${package_source}/requirements.txt`
-## but you can customize the name of the requirements file, e.g.
-# [build.packages.my-custom-package.dependencies.pip]
-# file = "custom_requirements.txt"
-
-## otherwise you can specify the pip packages directly
-# [build.packages.my-custom-package.dependencies.pip.packages]
-# numpy = "1.0.0"
-
-## if the AICA package contains multiple ROS packages, repeat the process for each ROS package.
-# [build.packages.other-component-package]
-# source = "./source/other_component_package"
+#[build.packages.my-custom-package.dependencies.apt]
+#ros-jazzy-cv-detection = "*"

@@ -14,10 +14,10 @@ class MoveToPositionComponent(Component):
         self._param_orientation = sr.Parameter("target_orientation", [1.0, 0.0, 0.0, 0.0], sr.ParameterType.DOUBLE_ARRAY)
 
         # Ajout des paramètres au composant
-        self.add_parameter(self._param_x, "X-coordinate of target position")
-        self.add_parameter(self._param_y, "Y-coordinate of target position")
-        self.add_parameter(self._param_z, "Z-coordinate of target position")
-        self.add_parameter(self._param_orientation, "Orientation of target position (quaternion)")
+        self.add_parameter("_param_x", "X-coordinate of target position")
+        self.add_parameter("_param_y", "Y-coordinate of target position")
+        self.add_parameter("_param_z", "Z-coordinate of target position")
+        self.add_parameter("_param_orientation", "Orientation of target position (quaternion)")
 
         # Initialisation de la position cible
         self.target_position = CartesianPose()  # Création d'un nouvel objet CartesianState
@@ -48,3 +48,4 @@ class MoveToPositionComponent(Component):
             if parameter.get_value() < 0.0:
                 self.get_logger.error(f"Value for parameter {parameter.get_name()} cannot be below 0")
                 return False
+        return True

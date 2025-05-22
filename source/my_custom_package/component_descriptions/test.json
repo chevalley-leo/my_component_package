@@ -2,10 +2,10 @@
   "$schema": "https://docs.aica.tech/schemas/1-1-1/component.schema.json",
   "name": "MoveToPosition",
   "description": {
-    "brief": "A component to move to a defined position in Cartesian space. v4.2",
+    "brief": "A component to move to a defined position in Cartesian space. v4.5",
     "details": "This component defines a target position in Cartesian coordinates (x, y, z) and an orientation in quaternion format. The component can be configured to move to a new position at runtime."
   },
-  "registration": "move_to_position_package::MoveToPosition",
+  "registration": "my_custom_package::MoveToPosition",
   "inherits": "modulo_components::Component",
   "parameters": [
     {

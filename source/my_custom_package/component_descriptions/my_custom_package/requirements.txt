@@ -1,0 +1,37 @@
+{
+    "model_file": "piece.stl",
+    "camera": {
+        "depth_stream": {
+            "width": 1280,
+            "height": 720,
+            "format": "z16",
+            "fps": 30
+        },
+        "color_stream": {
+            "width": 1280,
+            "height": 720,
+            "format": "bgr8",
+            "fps": 30
+        },
+        "depth_scale": 1000.0,
+        "depth_trunc": 3.0
+    },
+    "filter": {
+        "depth_range": {
+            "min": 150,
+            "max": 700
+        },
+        "target_color": [128, 96, 49],
+        "tolerance_positive": [20, 20, 20],
+        "tolerance_negative": [30, 30, 30]
+    },
+    "registration": {
+        "voxel_size": 0.001,
+        "angle_step": 5,
+        "rotation_ranges": {
+            "x": [-30, 35],
+            "y": [-30, 35],
+            "z": [0, 360]
+        }
+    }
+}

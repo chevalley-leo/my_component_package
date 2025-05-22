@@ -1,0 +1,106 @@
+{
+  "$schema": "https://docs.aica.tech/schemas/1-1-2/component.schema.json",
+  "name": "Piece Detection",
+  "description": {
+    "brief": "Detects and processes a piece using RealSense and Open3D.",
+    "details": "This component detects a piece in the camera's field of view, computes its position and orientation, and outputs the results."
+  },
+  "registration": "my_custom_package::PieceDetection",
+  "inherits": "modulo_components::LifecycleComponent",
+  "inputs": [
+    {
+      "signal_name": "depth_image",
+      "signal_type": "other",
+      "custom_signal_type": "sensor_msgs::msg::Image",
+      "display_name": "Depth Image",
+      "description": "Depth image aligned"
+    },
+    {
+      "signal_name": "depth_camera_info",
+      "signal_type": "other",
+      "custom_signal_type": "sensor_msgs::msg::CameraInfo",
+      "display_name": "Depth Camera Infoe",
+      "description": "Depth camera info"
+    },
+    {
+      "signal_name": "color_image",
+      "signal_type": "other",
+      "custom_signal_type": "sensor_msgs::msg::Image",
+      "display_name": "Color Image",
+      "description": "Color image"
+    }
+  ],
+  "outputs": [
+    {
+      "signal_name": "piece_pose",
+      "signal_type": "cartesian_pose",
+      "display_name": "Piece pose",
+      "description": "The pose of the piece"
+    }
+  ],
+  "parameters": [
+    {
+      "parameter_name": "piece_path",
+      "display_name": "Piece Path",
+      "description": "Path to the STL file representing the piece",
+      "default_value": "piece.stl",
+      "parameter_type": "string"
+    },
+    {
+      "parameter_name": "number_of_points",
+      "display_name": "Number of Points",
+      "description": "Number of points to sample from the mesh",
+      "default_value": "5000",
+      "parameter_type": "int"
+    },
+    {
+      "parameter_name": "voxel_size",
+      "display_name": "Voxel Size",
+      "description": "Voxel size for downsampling the point cloud",
+      "default_value": "0.001",
+      "parameter_type": "double"
+    },
+    {
+      "parameter_name": "min_depth",
+      "display_name": "Minimum Depth",
+      "description": "Minimum depth value for filtering the depth image",
+      "default_value": "150",
+      "parameter_type": "int"
+    },
+    {
+      "parameter_name": "max_depth",
+      "display_name": "Maximum Depth",
+      "description": "Maximum depth value for filtering the depth image",
+      "default_value": "700",
+      "parameter_type": "int"
+    },
+    {
+      "parameter_name": "color_to_filter",
+      "display_name": "Color to Filter",
+      "description": "RGB color to filter in the point cloud",
+      "default_value": "[128, 96, 49]",
+      "parameter_type": "int_array"
+    },
+    {
+      "parameter_name": "positive_tolerance",
+      "display_name": "Positive Tolerance",
+      "description": "Positive tolerance for color filtering",
+      "default_value": "[20, 20, 20]",
+      "parameter_type": "int_array"
+    },
+    {
+      "parameter_name": "negative_tolerance",
+      "display_name": "Negative Tolerance",
+      "description": "Negative tolerance for color filtering",
+      "default_value": "[30, 30, 30]",
+      "parameter_type": "int_array"
+    },
+    {
+      "parameter_name": "camera_pose_world",
+      "display_name": "Camera Pose (World)",
+      "description": "Position of the camera in world coordinates.",
+      "default_value": "[0.42104, 0, 0.78244, 0.0, 0.707107, -0.707107, 0]",
+      "parameter_type": "double_array"
+    }
+  ]
+}
