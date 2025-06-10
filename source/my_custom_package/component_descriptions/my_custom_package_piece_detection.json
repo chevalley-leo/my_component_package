@@ -19,7 +19,7 @@
       "signal_name": "depth_camera_info",
       "signal_type": "other",
       "custom_signal_type": "sensor_msgs::msg::CameraInfo",
-      "display_name": "Depth Camera Infoe",
+      "display_name": "Depth Camera Info",
       "description": "Depth camera info"
     },
     {
@@ -101,6 +101,25 @@
       "description": "Position of the camera in world coordinates.",
       "default_value": "[0.42104, 0, 0.78244, 0.0, 0.707107, -0.707107, 0]",
       "parameter_type": "double_array"
+    },
+    {
+      "parameter_name":"max_cluster_size",
+      "display_name": "Max Cluster Size",
+      "description": "Maximum size of a cluster to be considered a valid piece",
+      "default_value": "10000",
+      "parameter_type": "int"
+    }
+  ],
+  "predicates": [
+    {
+      "predicate_name": "is_piece_confirmed",
+      "display_name": "Is Piece Confirmed",
+      "description": "True if the average fit percentage is above 97%"
+    },
+    {
+      "predicate_name": "is_piece_not_confirmed",
+      "display_name": "Is Piece Not Confirmed",
+      "description": "True if the average fit percentage is below 97%"
     }
   ]
 }

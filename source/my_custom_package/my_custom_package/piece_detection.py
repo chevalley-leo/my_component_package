@@ -16,41 +16,53 @@ class PieceDetectionComponent(LifecycleComponent):
         super().__init__(node_name, *args, **kwargs)
 
         # Définir les paramètres
+        self._max_cluster_size = 10000
         self._voxel_size = 0.001
         self._min_depth = 150
         self._max_depth = 700
         self._target_color = None
         self._positive_tolerance = None
         self._negative_tolerance = None
+
         self.add_parameter(sr.Parameter("piece_path", "piece.stl", sr.ParameterType.STRING), "Path to the STL file")
+
         self.add_parameter(
             sr.Parameter("number_of_points", 5000, sr.ParameterType.INT), "Number of points to sample from the mesh"
         )
+
         self.add_parameter(sr.Parameter("voxel_size", self._voxel_size, sr.ParameterType.DOUBLE), "Voxel size for downsampling")
+
         self.add_parameter(
             sr.Parameter("min_depth", self._min_depth, sr.ParameterType.INT), "Minimum depth for filtering"
         )
+
         self.add_parameter(
+           
             sr.Parameter("max_depth", self._max_depth, sr.ParameterType.INT), "Maximum depth for filtering"
         )
         self.add_parameter(
             sr.Parameter("color_to_filter", [128, 96, 49], sr.ParameterType.INT_ARRAY),
             "Color to filter in RGB format",
         )
+
         self.add_parameter(
             sr.Parameter("positive_tolerance", [20, 20, 20], sr.ParameterType.INT_ARRAY),
             "Tolerance for positive filtering",
         )
+
         self.add_parameter(
             sr.Parameter("negative_tolerance", [30, 30, 30], sr.ParameterType.INT_ARRAY),
             "Tolerance for negative filtering",
         )
+
         self.add_parameter(
             sr.Parameter(
                 "camera_pose_world", [0.420451, 0.0175, 0.766251, 0.707107, 0, -0.707107, 0], sr.ParameterType.DOUBLE_ARRAY
             ),
             "Camera pose in world coordinates",
         )
+
+        self.add_parameter(sr.Parameter("max_cluster_size", self._max_cluster_size, sr.ParameterType.INT), "Maximum cluster size")
 
         self.cv_bridge = CvBridge()
         self.depth_camera_info = None
@@ -66,6 +78,8 @@ class PieceDetectionComponent(LifecycleComponent):
 
         self.pcd_model = None
         self.initial_model_points = None
+        self.add_predicate("is_piece_confirmed", False)
+        self.add_predicate("is_piece_not_confirmed", False)
     
     def _on_depth_info(self, msg: CameraInfo):
         self.depth_camera_info = msg
@@ -157,6 +171,11 @@ class PieceDetectionComponent(LifecycleComponent):
             target_label = unique_labels[np.argmax(counts)]
             mask = labels == target_label
             piece_points = points[mask]
+            if len(piece_points) > self._max_cluster_size:
+                self.get_logger().warning(f"Cluster trop gros : {len(piece_points)} points. Détection ignorée.")
+                self.set_predicate("is_piece_confirmed", False)
+                self.set_predicate("is_piece_not_confirmed", True)
+                return
             pcd_piece = o3d.geometry.PointCloud()
             pcd_piece.points = o3d.utility.Vector3dVector(piece_points)
 
@@ -174,10 +193,16 @@ class PieceDetectionComponent(LifecycleComponent):
             self.pcd_model = self.pcd_model.voxel_down_sample(self._voxel_size)
             pcd_piece = pcd_piece.voxel_down_sample(self._voxel_size)
 
-            rot_Y = self.find_best_rotation(self.pcd_model, pcd_piece, axis="y", angle_range=(-30, 35))
-            rot_X = self.find_best_rotation(self.pcd_model, pcd_piece, axis="x", angle_range=(-30, 35))
-            rot_Z = self.find_best_rotation(self.pcd_model, pcd_piece, axis="z", angle_range=(0, 360))
+            rot_Y, fit_Y = self.find_best_rotation(self.pcd_model, pcd_piece, axis="y", angle_range=(-30, 35))
+            rot_X, fit_X = self.find_best_rotation(self.pcd_model, pcd_piece, axis="x", angle_range=(-30, 35))
+            rot_Z, fit_Z = self.find_best_rotation(self.pcd_model, pcd_piece, axis="z", angle_range=(-45, 50))
             best_rotation_matrix = rot_X @ rot_Y @ rot_Z
+
+            # Calcul de la moyenne des fit et mise à jour du prédicat
+            fit_mean = (fit_X + fit_Y + fit_Z) / 3
+            self.set_predicate("is_piece_confirmed", bool(fit_mean > 97.0))
+            self.set_predicate("is_piece_not_confirmed", bool(fit_mean <= 97.0))
+            self.get_logger().info(f"Fit mean: {fit_mean:.1f}%")
 
             global_transformation = np.eye(4)
             translation_matrix = np.eye(4)
@@ -244,17 +269,18 @@ class PieceDetectionComponent(LifecycleComponent):
         except Exception as e:
             self.get_logger().error(f"Erreur dans on_step_callback : {e}")
 
-    # Method to find the best rotation angle
-    def find_best_rotation(self, pcd_model, pcd_piece, axis, angle_range, angle_step=3):
+    # Method to find the best rotation angle with fit percentage
+    def find_best_rotation(self, pcd_model, pcd_piece, axis, angle_range, angle_step=5, fit_tolerance=0.01):
         def calculate_average_distance(source_points, target_points):
             tree = cKDTree(target_points)
             distances, _ = tree.query(source_points, k=1)
-            return np.mean(distances)
+            return np.mean(distances), distances
 
         initial_model_points = np.asarray(pcd_model.points).copy()
         center_of_model = np.mean(initial_model_points, axis=0)
         best_angle = None
         min_distance = float("inf")
+        best_distances = None
         angles = np.arange(*angle_range, angle_step)
 
         for angle in angles:
@@ -267,10 +293,13 @@ class PieceDetectionComponent(LifecycleComponent):
             ]
             rotation_matrix = o3d.geometry.get_rotation_matrix_from_axis_angle(rotation_vector)
             pcd_model.rotate(rotation_matrix, center=center_of_model)
-            avg_distance = calculate_average_distance(np.asarray(pcd_model.points), np.asarray(pcd_piece.points))
+            avg_distance, distances = calculate_average_distance(
+                np.asarray(pcd_model.points), np.asarray(pcd_piece.points)
+            )
             if avg_distance < min_distance:
                 min_distance = avg_distance
                 best_angle = angle
+                best_distances = distances
 
         pcd_model.points = o3d.utility.Vector3dVector(initial_model_points)
         angle_rad = np.radians(best_angle)
@@ -281,4 +310,12 @@ class PieceDetectionComponent(LifecycleComponent):
         ]
         best_rotation_matrix = o3d.geometry.get_rotation_matrix_from_axis_angle(best_rotation_vector)
         pcd_model.rotate(best_rotation_matrix, center=center_of_model)
-        return best_rotation_matrix
+
+        # Calcul du pourcentage de fit
+        fit_percent = 0.0
+        if best_distances is not None and len(best_distances) > 0:
+            fit_percent = np.sum(best_distances < fit_tolerance) / len(best_distances) * 100
+        self.get_logger().info(
+            f"[find_best_rotation] axis={axis}, best_angle={best_angle}, fit={fit_percent:.1f}% (tol={fit_tolerance})"
+        )
+        return best_rotation_matrix, fit_percent

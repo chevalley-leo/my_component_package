@@ -59,6 +59,7 @@ class CrealityInterface(Component):
 
         # Envoyer le G-code à la machine
         self.send_gcode_to_machine(gcode_lines)
+        time.sleep(4)
         self.set_predicate("laser_finished", True)
         return {"success": True, "message": "G-code envoyé avec succès."}
 
@@ -85,11 +86,7 @@ class CrealityInterface(Component):
                                 break
                         time.sleep(0.01)  # Petite pause pour laisser GRBL traiter
 
-                # Attendre que la machine soit idle (fin du job)
-                self.wait_until_idle(ser)
-
-                # Ici, le laser a vraiment fini
-                self.set_predicate("laser_finished", True)
+ 
 
         except serial.SerialException as e:
             self.get_logger().error(f"Erreur de communication série: {e}")

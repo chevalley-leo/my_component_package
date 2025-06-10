@@ -7,7 +7,7 @@ version = "0.0.1"
 
 [build]
 type = "ros"
-image = "v2.0.4-jazzy"
+image = "v2.0.5-jazzy"
 
 [build.dependencies]
 "@aica/foss/control-libraries" = "v9.1.0"
@@ -15,6 +15,7 @@ image = "v2.0.4-jazzy"
 
 [build.packages.my-custom-package]
 source = "./source/my_custom_package"
+
 
 ## add any required apt dependencies for the custom package.
 ## these packages will be available during the build but also in the final image,
