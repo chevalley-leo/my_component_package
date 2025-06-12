@@ -200,8 +200,8 @@ class PieceDetectionComponent(LifecycleComponent):
 
             # Calcul de la moyenne des fit et mise à jour du prédicat
             fit_mean = (fit_X + fit_Y + fit_Z) / 3
-            self.set_predicate("is_piece_confirmed", bool(fit_mean > 97.0))
-            self.set_predicate("is_piece_not_confirmed", bool(fit_mean <= 97.0))
+            self.set_predicate("is_piece_confirmed", bool(fit_mean > 96.0))
+            self.set_predicate("is_piece_not_confirmed", bool(fit_mean <= 96.0))
             self.get_logger().info(f"Fit mean: {fit_mean:.1f}%")
 
             global_transformation = np.eye(4)
@@ -315,7 +315,4 @@ class PieceDetectionComponent(LifecycleComponent):
         fit_percent = 0.0
         if best_distances is not None and len(best_distances) > 0:
             fit_percent = np.sum(best_distances < fit_tolerance) / len(best_distances) * 100
-        self.get_logger().info(
-            f"[find_best_rotation] axis={axis}, best_angle={best_angle}, fit={fit_percent:.1f}% (tol={fit_tolerance})"
-        )
         return best_rotation_matrix, fit_percent

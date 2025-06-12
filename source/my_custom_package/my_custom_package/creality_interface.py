@@ -59,7 +59,7 @@ class CrealityInterface(Component):
 
         # Envoyer le G-code à la machine
         self.send_gcode_to_machine(gcode_lines)
-        time.sleep(4)
+        time.sleep(2)
         self.set_predicate("laser_finished", True)
         return {"success": True, "message": "G-code envoyé avec succès."}
 
@@ -86,24 +86,28 @@ class CrealityInterface(Component):
                                 break
                         time.sleep(0.01)  # Petite pause pour laisser GRBL traiter
 
- 
+                # Attendre que la machine soit vraiment Idle
+                self.wait_until_idle(ser)
+                self.set_predicate("laser_finished", True)
 
         except serial.SerialException as e:
             self.get_logger().error(f"Erreur de communication série: {e}")
 
     def wait_until_idle(self, ser, timeout=120):
         """Attend que la machine GRBL soit en état Idle (fin du job)."""
+        self.get_logger().warning("Attente que la machine soit Idle...")
         start_time = time.time()
         idle_counter = 0
         while True:
             ser.write(b'?\n')
             grbl_out = ser.readline()
             grbl_response = grbl_out.strip().decode('utf-8')
-            if "Idle" in grbl_response:
+            self.get_logger().warning(f"Réponse GRBL: {grbl_response}")
+            if "ok" in grbl_response or "Idle" in grbl_response:
                 idle_counter += 1
             else:
                 idle_counter = 0
-            if idle_counter > 5:
+            if idle_counter > 20:
                 break
             if time.time() - start_time > timeout:
                 self.get_logger().warning("Timeout en attendant que la machine soit Idle.")
@@ -115,6 +119,10 @@ class CrealityInterface(Component):
             self.get_logger().error("Provide a non empty value for parameter 'usb_path'")
             return False
         return True
+    
+    #q6uCINCoaVKV1c9IkKwx
+
+    #e4396706-b9a5-4f62-ad89-6198ee98d6fc.Xw19Ca0q1aD1CxHVtrSdMvna2yMHco6502t9Qnk8CUxj
 
     def send_wake_up(self):
         # Wake up, hit enter a few times to wake the Printrbot
