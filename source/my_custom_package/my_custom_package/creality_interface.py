@@ -12,7 +12,7 @@ SCALE_FACTOR = 1.0       # Facteur de mise à l'échelle
 OFFSET_X = 0          # Décalage sur l'axe X
 OFFSET_Y = 0       # Décalage sur l'axe Y
 LASER_POWER = 500       # Puissance du laser (0 à 1000)
-FEED_RATE = 600          # Vitesse de déplacement en mm/min
+FEED_RATE = 700          # Vitesse de déplacement en mm/min
 
 
 class CrealityInterface(Component):
@@ -59,8 +59,8 @@ class CrealityInterface(Component):
 
         # Envoyer le G-code à la machine
         self.send_gcode_to_machine(gcode_lines)
-        time.sleep(2)
-        self.set_predicate("laser_finished", True)
+        time.sleep(0.5)
+        self.set_predicate("laser_finished", False)
         return {"success": True, "message": "G-code envoyé avec succès."}
 
 
@@ -107,7 +107,7 @@ class CrealityInterface(Component):
                 idle_counter += 1
             else:
                 idle_counter = 0
-            if idle_counter > 20:
+            if idle_counter > 15:
                 break
             if time.time() - start_time > timeout:
                 self.get_logger().warning("Timeout en attendant que la machine soit Idle.")
@@ -127,7 +127,7 @@ class CrealityInterface(Component):
     def send_wake_up(self):
         # Wake up, hit enter a few times to wake the Printrbot
         self._serial.write(str.encode("\r\n\r\n"))
-        time.sleep(1)   # Wait for Printrbot to initialize
+        time.sleep(0.2)   # Wait for Printrbot to initialize
         self._serial.flushInput()  # Flush startup text in serial input
 
     def remove_comment(string):
@@ -145,7 +145,6 @@ class CrealityInterface(Component):
         if cleaned_line != '$X' or '$$':
             idle_counter = 0
             while True:
-                # Event().wait(0.01)
                 self._serial.reset_input_buffer()
                 command = str.encode('?' + '\n')
                 self._serial.write(command)
@@ -227,10 +226,6 @@ class CrealityInterface(Component):
                 radius = entity.dxf.radius * SCALE_FACTOR
                 start_angle = math.radians(entity.dxf.start_angle)
                 end_angle = math.radians(entity.dxf.end_angle)
-
-                #self.get_logger().info(f"ARC Center: ({entity.dxf.center.x}, {entity.dxf.center.y}), "
-                                       #f"Radius: {entity.dxf.radius}, "
-                                       #f"Start Angle: {entity.dxf.start_angle}, End Angle: {entity.dxf.end_angle}")
 
                 num_points = 200
                 points = []
@@ -360,9 +355,9 @@ class CrealityInterface(Component):
         print("Initialisation de la machine...")
         if do_homing:
             ser.write(b"$H\n")  # Lancer le homing
-            time.sleep(5)
+            time.sleep(1)
         ser.write(b"$X\n")  # Déverrouiller la machine si nécessaire
-        time.sleep(0.5)
+        time.sleep(0.1)
         ser.write(b"G21\n")  # Unités en mm
         time.sleep(0.1)
         ser.write(b"G90\n")  # Mode absolu
