@@ -2,8 +2,8 @@
   "$schema": "https://docs.aica.tech/schemas/1-1-2/component.schema.json",
   "name": "Piece Detection",
   "description": {
-    "brief": "Detects and processes a piece using RealSense and Open3D.",
-    "details": "This component detects a piece in the camera's field of view, computes its position and orientation, and outputs the results."
+    "brief": "Detects and processes a piece using RealSense and Open3D. V3.0",
+    "details": "This component detects a piece in a scene using depth and color images from a RealSense camera. It processes the point cloud to filter out noise, samples points from a mesh, and uses RANSAC to fit the piece model to the point cloud. The component outputs the pose of the detected piece."
   },
   "registration": "my_custom_package::PieceDetection",
   "inherits": "modulo_components::LifecycleComponent",
@@ -42,7 +42,7 @@
     {
       "parameter_name": "piece_path",
       "display_name": "Piece Path",
-      "description": "Path to the STL file representing the piece",
+      "description": "Path to the STL file representing model of the piece",
       "default_value": "piece.stl",
       "parameter_type": "string"
     },
@@ -108,6 +108,13 @@
       "description": "Maximum size of a cluster to be considered a valid piece",
       "default_value": "10000",
       "parameter_type": "int"
+    },
+    {
+      "parameter_name": "fit_threshold",
+      "display_name": "Fit Threshold",
+      "description": "Fit threshold (%) for confirming the piece",
+      "default_value": "97.0",
+      "parameter_type": "double"
     }
   ],
   "predicates": [

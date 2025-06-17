@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.aica.tech/schemas/1-1-2/component.schema.json",
+  "name": "Tcp Server",
+  "description": {
+    "brief": "A TCP server component for receiving data. V1.0",
+    "details": "This component listens for incoming TCP connections and can receive data from clients. It is useful for applications that require real-time data transfer over a network."
+  },
+  "registration": "my_custom_package::TcpServer",
+  "inherits": "modulo_components::Component",
+  "parameters": [
+    {
+      "display_name": "Host",
+      "description": "Host address for the TCP server",
+      "parameter_name": "host",
+      "parameter_type": "string",
+      "default_value": "0.0.0.0"
+    },
+    {
+      "display_name": "Port",
+      "description": "Port number for the TCP server",
+      "parameter_name": "port",
+      "parameter_type": "int",
+      "default_value": null
+    },
+    {
+      "display_name": "Save path",
+      "description": "Save path for the received data",
+      "parameter_name": "save_path",
+      "parameter_type": "string",
+      "default_value": null
+    }
+  ]
+}

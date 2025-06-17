@@ -37,7 +37,6 @@ class PieceDetectionComponent(LifecycleComponent):
         )
 
         self.add_parameter(
-           
             sr.Parameter("max_depth", self._max_depth, sr.ParameterType.INT), "Maximum depth for filtering"
         )
         self.add_parameter(
@@ -63,6 +62,11 @@ class PieceDetectionComponent(LifecycleComponent):
         )
 
         self.add_parameter(sr.Parameter("max_cluster_size", self._max_cluster_size, sr.ParameterType.INT), "Maximum cluster size")
+
+        self.add_parameter(
+            sr.Parameter("fit_threshold", 97.0, sr.ParameterType.DOUBLE),
+            "Fit threshold (%) for confirming the piece"
+        )
 
         self.cv_bridge = CvBridge()
         self.depth_camera_info = None
@@ -200,9 +204,10 @@ class PieceDetectionComponent(LifecycleComponent):
 
             # Calcul de la moyenne des fit et mise à jour du prédicat
             fit_mean = (fit_X + fit_Y + fit_Z) / 3
-            self.set_predicate("is_piece_confirmed", bool(fit_mean > 96.0))
-            self.set_predicate("is_piece_not_confirmed", bool(fit_mean <= 96.0))
-            self.get_logger().info(f"Fit mean: {fit_mean:.1f}%")
+            fit_threshold = self.get_parameter_value("fit_threshold")
+            self.set_predicate("is_piece_confirmed", bool(fit_mean > fit_threshold))
+            self.set_predicate("is_piece_not_confirmed", bool(fit_mean <= fit_threshold))
+            self.get_logger().info(f"Fit mean: {fit_mean:.1f}% (threshold: {fit_threshold}%)")
 
             global_transformation = np.eye(4)
             translation_matrix = np.eye(4)

@@ -2,7 +2,8 @@
   "$schema": "https://docs.aica.tech/schemas/1-1-1/component.schema.json",
   "name": "Creality Interface",
   "description": {
-    "brief": "Communicate with Laser"
+    "brief": "Communicate with Laser. V4.0",
+    "details": "This component allows communication with a Creality laser device over USB. It supports sending G-code commands to the laser and checking if the laser has finished its operation."
   },
   "registration": "my_custom_package::CrealityInterface",
   "inherits": "modulo_components::Component",
