@@ -87,15 +87,12 @@ class PieceDetectionComponent(LifecycleComponent):
     
     def _on_depth_info(self, msg: CameraInfo):
         self.depth_camera_info = msg
-        self.get_logger().info(f"Received depth camera info: {msg.header.stamp.sec} {msg.header.stamp.nanosec}", throttle_duration_sec=1.0)
     
     def _on_depth(self, msg: Image):
         self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        self.get_logger().info(f"Received depth image: {msg.header.stamp.sec} {msg.header.stamp.nanosec}", throttle_duration_sec=1.0)
     
     def _on_color(self, msg: Image):
         self.color_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        self.get_logger().info(f"Received color image: {msg.header.stamp.sec} {msg.header.stamp.nanosec}", throttle_duration_sec=1.0)
 
     def on_configure_callback(self) -> bool:
         """Initialisation de la caméra et du modèle 3D."""

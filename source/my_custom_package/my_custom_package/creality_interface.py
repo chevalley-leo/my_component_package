@@ -4,15 +4,14 @@ import serial
 import time
 import ezdxf
 import math
-import json
 from threading import Event
 
 # ======== CONFIGURATION ========
 SCALE_FACTOR = 1.0       # Facteur de mise à l'échelle
 OFFSET_X = 0          # Décalage sur l'axe X
 OFFSET_Y = 0       # Décalage sur l'axe Y
-LASER_POWER = 500       # Puissance du laser (0 à 1000)
-FEED_RATE = 700          # Vitesse de déplacement en mm/min
+LASER_POWER = 300       # Puissance du laser (0 à 1000)
+FEED_RATE = 800          # Vitesse de déplacement en mm/min
 
 
 class CrealityInterface(Component):
