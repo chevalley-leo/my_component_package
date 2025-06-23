@@ -182,7 +182,6 @@ class PieceDetectionComponent(LifecycleComponent):
 
             # Calculer la transformation
             self.pcd_model.points = o3d.utility.Vector3dVector(self.initial_model_points)
-            # self.pcd_model.paint_uniform_color([0, 1, 0])
             average_position_piece = np.mean(piece_points, axis=0)
             model_points = np.asarray(self.pcd_model.points)
             average_position_model = np.mean(model_points, axis=0)
@@ -194,18 +193,19 @@ class PieceDetectionComponent(LifecycleComponent):
             self.pcd_model = self.pcd_model.voxel_down_sample(self._voxel_size)
             pcd_piece = pcd_piece.voxel_down_sample(self._voxel_size)
 
+            # Recherche des meilleures rotations et calcul du fit
             rot_Y, fit_Y = self.find_best_rotation(self.pcd_model, pcd_piece, axis="y", angle_range=(-30, 35))
             rot_X, fit_X = self.find_best_rotation(self.pcd_model, pcd_piece, axis="x", angle_range=(-30, 35))
             rot_Z, fit_Z = self.find_best_rotation(self.pcd_model, pcd_piece, axis="z", angle_range=(-45, 50))
             best_rotation_matrix = rot_X @ rot_Y @ rot_Z
 
-            # Calcul de la moyenne des fit et mise à jour du prédicat
             fit_mean = (fit_X + fit_Y + fit_Z) / 3
             fit_threshold = self.get_parameter_value("fit_threshold")
             self.set_predicate("is_piece_confirmed", bool(fit_mean > fit_threshold))
             self.set_predicate("is_piece_not_confirmed", bool(fit_mean <= fit_threshold))
             self.get_logger().info(f"Fit mean: {fit_mean:.1f}% (threshold: {fit_threshold}%)")
 
+            # Transformation globale
             global_transformation = np.eye(4)
             translation_matrix = np.eye(4)
             translation_matrix[:3, 3] = average_position_piece
@@ -222,9 +222,6 @@ class PieceDetectionComponent(LifecycleComponent):
             camera_transformation_world[:3, 3] = pose[:3]
 
             piece_transformation_world = camera_transformation_world @ global_transformation
-            """rotation_90_x = np.eye(4)
-            rotation_90_x[:3, :3] = R.from_euler('x', 90, degrees=True).as_matrix()
-            piece_transformation_world = piece_transformation_world @ rotation_90_x"""
 
             piece_position_world = piece_transformation_world[:3, 3]
             piece_orientation_world = piece_transformation_world[:3, :3]
@@ -235,41 +232,9 @@ class PieceDetectionComponent(LifecycleComponent):
             self.piece_pose.set_position(piece_position_world)
             self.piece_pose.set_orientation(piece_quaternion)
             self.get_logger().info(f"pose: {self.piece_pose}")
-            """
-            initial_transformation = np.eye(4)
-            initial_transformation[:3, 3] = translation
-            self.pcd_model.transform(initial_transformation)
 
-            # Réduction de la densité des nuages de points
-            self.pcd_model = self.pcd_model.voxel_down_sample(self._voxel_size)
-            pcd_piece = pcd_piece.voxel_down_sample(self._voxel_size)
-
-            # Trouver la meilleure rotation
-            rot_Y = self.find_best_rotation(self.pcd_model, pcd_piece, axis="y", angle_range=(-30, 35))
-            rot_X = self.find_best_rotation(self.pcd_model, pcd_piece, axis="x", angle_range=(-30, 35))
-            rot_Z = self.find_best_rotation(self.pcd_model, pcd_piece, axis="z", angle_range=(0, 360))
-            best_rotation_matrix = rot_X @ rot_Y @ rot_Z
-
-            # Calculer la transformation globale
-            transformation = np.eye(4)
-            transformation[:3, 3] = average_position_piece
-            transformation[:3, :3] = best_rotation_matrix
-            rotation_90_x = np.eye(4)
-            rotation_90_x[:3, :3] = R.from_euler("x", 90, degrees=True).as_matrix()
-            piece_transformation_camera = transformation @ rotation_90_x
-            piece_pose = sr.CartesianPose("piece", "camera")
-            piece_pose.set_position(piece_transformation_camera[:3, 3])
-            piece_quaternion = R.from_matrix(piece_transformation_camera[:3, :3]).as_quat()
-            piece_pose.set_orientation([piece_quaternion[3], piece_quaternion[0], piece_quaternion[1], piece_quaternion[2]])
-
-            # Transformation de la caméra
-            camera_pose = sr.CartesianPose("camera", "world")
-            camera_pose.set_pose(self.get_parameter_value("camera_pose_world"))
-
-            self.piece_pose = camera_pose * piece_pose
-            self.get_logger().info("done")"""
         except Exception as e:
-            self.get_logger().error(f"Erreur dans on_step_callback : {e}")
+             self.get_logger().error(f"Erreur dans on_step_callback : {e}")
 
     # Method to find the best rotation angle with fit percentage
     def find_best_rotation(self, pcd_model, pcd_piece, axis, angle_range, angle_step=5, fit_tolerance=0.01):

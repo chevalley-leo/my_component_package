@@ -21,6 +21,21 @@
       "description": "Baud Rate",
       "default_value": "115200",
       "parameter_type": "int"
+    },
+
+    {
+      "parameter_name": "LaserPower",
+      "display_name": "Laser Power",
+      "description": "Laser Power (0-1000)",
+      "default_value": "500",
+      "parameter_type": "int"
+    },
+    {
+      "parameter_name": "FeedRate",
+      "display_name": "Feed Rate",
+      "description": "Feed Rate (0-1000)",
+      "default_value": "600",
+      "parameter_type": "int"
     }
   ],
   "services": [

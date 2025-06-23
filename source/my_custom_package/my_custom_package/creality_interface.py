@@ -17,51 +17,26 @@ FEED_RATE = 800          # Vitesse de déplacement en mm/min
 class CrealityInterface(Component):
     def __init__(self, node_name: str, *args, **kwargs):
         super().__init__(node_name, *args, **kwargs)
-        
         self.add_parameter(sr.Parameter("usb_path", sr.ParameterType.STRING), "USB path")
         self.add_parameter(sr.Parameter("baud_rate", 115200, sr.ParameterType.INT), "Baud rate")
-
+        self.add_parameter(sr.Parameter("LaserPower", LASER_POWER, sr.ParameterType.INT), "Laser power")
+        self.add_parameter(sr.Parameter("FeedRate", FEED_RATE, sr.ParameterType.INT), "Feed rate")
         self._serial = serial.Serial(self.get_parameter_value("usb_path"), self.get_parameter_value("baud_rate"))
         self.send_wake_up()
-
         self.add_predicate("laser_finished", False)
         self.add_service("run_gcode", self._run_gcode)
 
     def _run_gcode(self, msg):
         self.set_predicate("laser_finished", False)
-        # Affiche la demande reçue
         self.get_logger().info(f"Received service call with payload {msg}")
-
-        """if isinstance(msg, str):
-            # Si msg est une chaîne de caractères, essaie de la convertir en dictionnaire (si c'est du JSON par exemple)
-            try:
-                msg = json.loads(msg)  # Supposons que msg est un JSON
-            except json.JSONDecodeError:
-                self.get_logger().error("Le message n'est pas un format JSON valide.")
-                return {"success": False, "message": "Le message n'est pas un format JSON valide."}
-        
-        if isinstance(msg, dict):
-            # Vérifier que le chemin du fichier DXF est bien dans le message
-            dxf_file_path = msg.get("dxf_path")
-            if not dxf_file_path:
-                self.get_logger().error("Le fichier DXF n'a pas été fourni.")
-                return {"success": False, "message": "Le fichier DXF n'a pas été fourni."}
-        else:
-            self.get_logger().error("Le message reçu n'est ni un dictionnaire ni une chaîne JSON valide.")
-            return {"success": False, "message": "Le message reçu est dans un format invalide."}
-        """
-        # Convertir le fichier DXF en G-code
         gcode_lines = self._dxf_to_gcode(msg)
         if not gcode_lines:
             self.get_logger().error(f"Erreur lors de la conversion du fichier {msg}.")
             return {"success": False, "message": "Erreur lors de la conversion du fichier DXF."}
-
-        # Envoyer le G-code à la machine
         self.send_gcode_to_machine(gcode_lines)
         time.sleep(0.5)
         self.set_predicate("laser_finished", False)
         return {"success": True, "message": "G-code envoyé avec succès."}
-
 
     def send_gcode_to_machine(self, gcode_lines):
         try:
@@ -164,7 +139,9 @@ class CrealityInterface(Component):
         self.get_logger().info(f"Original: ({x}, {y}), Offset: ({x_offset}, {y_offset})")
         return x_offset, y_offset
 
-    def _laser_on(self, power=LASER_POWER):
+    def _laser_on(self, power=None):
+        if power is None:
+            power = self.get_parameter_value("LaserPower")
         return f"M3 S{power}"
 
     def _laser_off(self):
@@ -173,8 +150,10 @@ class CrealityInterface(Component):
     def _rapid_move(self, x, y):
         return f"G0 X{x:.3f} Y{y:.3f}"
 
-    def _engrave_move(self, x, y):
-        return f"G1 X{x:.3f} Y{y:.3f} F{FEED_RATE}"
+    def _engrave_move(self, x, y, feed_rate=None):
+        if feed_rate is None:
+            feed_rate = self.get_parameter_value("FeedRate")
+        return f"G1 X{x:.3f} Y{y:.3f} F{feed_rate}"
     
     def _approximate_arc(self, x0, y0, x1, y1, bulge, segments=10):
         arc_pts = []
@@ -208,15 +187,10 @@ class CrealityInterface(Component):
                 self.get_logger().info(f"Entity: {entity}")
                 x1, y1 = self._apply_offset(entity.dxf.start.x, entity.dxf.start.y)
                 x2, y2 = self._apply_offset(entity.dxf.end.x, entity.dxf.end.y)
-                #self.get_logger().info(f"LINE Start: ({entity.dxf.start.x}, {entity.dxf.start.y}), "
-                                       #f"End: ({entity.dxf.end.x}, {entity.dxf.end.y}), "
-                                       #f"Transformed Start: ({x1}, {y1}), End: ({x2}, {y2})")
                 gcode.append(self._laser_off())
                 gcode.append(self._rapid_move(x1, y1))
-                #self.get_logger().info(f"G-code: {gcode[-1]}")
                 gcode.append(self._laser_on())
                 gcode.append(self._engrave_move(x2, y2))
-                #self.get_logger().info(f"G-code: {gcode[-1]}")
                 gcode.append(self._laser_off())
 
             elif entity.dxftype() == "ARC":
@@ -315,13 +289,10 @@ class CrealityInterface(Component):
                     self.get_logger().info(f"Déplacement vers le point de départ: ({x0}, {y0})")
                     gcode.append(self._rapid_move(x0, y0))
                     gcode.append(self._laser_on())
-
-
                     for i in range(1, len(vertices)):
                         x1_raw, y1_raw = vertices[i][0], vertices[i][1]
                         x1, y1 = self._apply_offset(x1_raw, y1_raw)
                         bulge = vertices[i - 1][4] if len(vertices[i - 1]) >= 5 else 0.0
-
                         if bulge != 0.0:
                             arc_points = self._approximate_arc(vertices[i - 1][0], vertices[i - 1][1],
                                                             x1_raw, y1_raw, bulge)
@@ -330,11 +301,8 @@ class CrealityInterface(Component):
                                 gcode.append(self._engrave_move(px_off, py_off))
                         else:
                             gcode.append(self._engrave_move(x1, y1))
-
-                    # Fermeture si nécessaire
                     if entity.closed:
                         gcode.append(self._engrave_move(x0, y0))
-
                     gcode.append(self._laser_off())
 
 
@@ -354,15 +322,15 @@ class CrealityInterface(Component):
         print("Initialisation de la machine...")
         if do_homing:
             ser.write(b"$H\n")  # Lancer le homing
-            time.sleep(1)
+            time.sleep(1.5)
         ser.write(b"$X\n")  # Déverrouiller la machine si nécessaire
-        time.sleep(0.1)
+        time.sleep(0.2)
         ser.write(b"G21\n")  # Unités en mm
-        time.sleep(0.1)
+        time.sleep(0.2)
         ser.write(b"G90\n")  # Mode absolu
-        time.sleep(0.1)
+        time.sleep(0.2)
         ser.write(b"M5\n")   # Laser OFF
-        time.sleep(0.1)
+        time.sleep(0.2)
         ser.write(b"G92 X0 Y0\n")  # Position de départ à (0,0)
-        time.sleep(0.1)
+        time.sleep(0.2)
         print("Machine initialisée et prête.")
