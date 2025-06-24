@@ -1,3 +1,33 @@
+"""
+piece_detection.py
+
+Description:
+    Author: Léo Chevalley
+    This script implements a component for detecting a piece using 3D point cloud data, color filtering, and clustering. It processes camera images and depth data, aligns a 3D model to detected clusters, and outputs the estimated pose of the detected piece. Designed for use with the modulo_components framework in robotics or automation systems.
+
+License:
+    MIT License
+    Copyright (c) 2025 Léo Chevalley
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+"""
+
+# ====== IMPORTS ======
 import numpy as np
 import open3d as o3d
 import state_representation as sr
@@ -10,12 +40,12 @@ from sensor_msgs.msg import CameraInfo, Image
 from sklearn.cluster import DBSCAN
 from copy import copy
 
-
+# ====== PIECE DETECTION COMPONENT ======
 class PieceDetectionComponent(LifecycleComponent):
+    # ====== INITIALIZATION ======
     def __init__(self, node_name: str, *args, **kwargs):
         super().__init__(node_name, *args, **kwargs)
-
-        # Définir les paramètres
+        # Set parameters
         self._max_cluster_size = 10000
         self._voxel_size = 0.001
         self._min_depth = 150
@@ -23,19 +53,14 @@ class PieceDetectionComponent(LifecycleComponent):
         self._target_color = None
         self._positive_tolerance = None
         self._negative_tolerance = None
-
         self.add_parameter(sr.Parameter("piece_path", "piece.stl", sr.ParameterType.STRING), "Path to the STL file")
-
         self.add_parameter(
             sr.Parameter("number_of_points", 5000, sr.ParameterType.INT), "Number of points to sample from the mesh"
         )
-
         self.add_parameter(sr.Parameter("voxel_size", self._voxel_size, sr.ParameterType.DOUBLE), "Voxel size for downsampling")
-
         self.add_parameter(
             sr.Parameter("min_depth", self._min_depth, sr.ParameterType.INT), "Minimum depth for filtering"
         )
-
         self.add_parameter(
             sr.Parameter("max_depth", self._max_depth, sr.ParameterType.INT), "Maximum depth for filtering"
         )
@@ -43,31 +68,25 @@ class PieceDetectionComponent(LifecycleComponent):
             sr.Parameter("color_to_filter", [128, 96, 49], sr.ParameterType.INT_ARRAY),
             "Color to filter in RGB format",
         )
-
         self.add_parameter(
             sr.Parameter("positive_tolerance", [20, 20, 20], sr.ParameterType.INT_ARRAY),
             "Tolerance for positive filtering",
         )
-
         self.add_parameter(
             sr.Parameter("negative_tolerance", [30, 30, 30], sr.ParameterType.INT_ARRAY),
             "Tolerance for negative filtering",
         )
-
         self.add_parameter(
             sr.Parameter(
                 "camera_pose_world", [0.420451, 0.0175, 0.766251, 0.707107, 0, -0.707107, 0], sr.ParameterType.DOUBLE_ARRAY
             ),
             "Camera pose in world coordinates",
         )
-
         self.add_parameter(sr.Parameter("max_cluster_size", self._max_cluster_size, sr.ParameterType.INT), "Maximum cluster size")
-
         self.add_parameter(
             sr.Parameter("fit_threshold", 97.0, sr.ParameterType.DOUBLE),
             "Fit threshold (%) for confirming the piece"
         )
-
         self.cv_bridge = CvBridge()
         self.depth_camera_info = None
         self.add_input("depth_camera_info", self._on_depth_info, CameraInfo)
@@ -75,27 +94,23 @@ class PieceDetectionComponent(LifecycleComponent):
         self.add_input("color_image", self._on_color, Image)
         self.depth_image = None
         self.add_input("depth_image", self._on_depth, Image)
-
-        # Définir les sorties
+        # Set outputs
         self.piece_pose = sr.CartesianPose()
         self.add_output("piece_pose", "piece_pose", EncodedState)
-
         self.pcd_model = None
         self.initial_model_points = None
         self.add_predicate("is_piece_confirmed", False)
         self.add_predicate("is_piece_not_confirmed", False)
-    
+    # ====== INPUT CALLBACKS ======
     def _on_depth_info(self, msg: CameraInfo):
         self.depth_camera_info = msg
-    
     def _on_depth(self, msg: Image):
         self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-    
     def _on_color(self, msg: Image):
         self.color_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-
+    # ====== CONFIGURATION CALLBACK ======
     def on_configure_callback(self) -> bool:
-        """Initialisation de la caméra et du modèle 3D."""
+        """Initialize camera and 3D model."""
         try:
             self._voxel_size = self.get_parameter_value("voxel_size")
             self._min_depth = self.get_parameter_value("min_depth")
@@ -103,42 +118,35 @@ class PieceDetectionComponent(LifecycleComponent):
             self._target_color = np.array(self.get_parameter_value("color_to_filter")) / 255.0
             self._positive_tolerance = np.array(self.get_parameter_value("positive_tolerance")) / 255.0
             self._negative_tolerance = np.array(self.get_parameter_value("negative_tolerance")) / 255.0
-
-            # Charger le modèle STL
             mesh_model = o3d.io.read_triangle_mesh(self.get_parameter_value("piece_path"))
             mesh_model.scale(0.001, center=mesh_model.get_center())
             raw_pcd_model = mesh_model.sample_points_uniformly(self.get_parameter_value("number_of_points"))
             raw_pcd_model.estimate_normals()
-
             model_points = np.asarray(raw_pcd_model.points)
             z_min = np.min(model_points[:, 2])
             tolerance_z = 0.0001
             filtered_model_points = model_points[np.abs(model_points[:, 2] - z_min) <= tolerance_z]
-
             self.pcd_model = o3d.geometry.PointCloud()
             self.pcd_model.points = o3d.utility.Vector3dVector(filtered_model_points)
             self.pcd_model.estimate_normals()
-
             rotation_matrix = o3d.geometry.get_rotation_matrix_from_axis_angle([0, 0, np.pi])
             self.pcd_model.rotate(rotation_matrix, center=self.pcd_model.get_center())
             self.initial_model_points = np.asarray(self.pcd_model.points).copy()
             return True
         except Exception as e:
-            self.get_logger().error(f"Erreur lors de la configuration : {e}")
+            self.get_logger().error(f"Error during configuration: {e}")
             return False
-
+    # ====== MAIN STEP CALLBACK ======
     def on_step_callback(self) -> None:
-        """Traitement principal pour détecter la pièce."""
+        """Main processing for piece detection."""
         try:
             if self.depth_camera_info is None or self.depth_image is None or self.color_image is None:
-                self.get_logger().info("Didn't receive all images yet", throttle_duration_sec=1.0)
+                self.get_logger().info("Did not receive all images yet", throttle_duration_sec=1.0)
                 return
-
             color_image = copy(self.color_image)
             depth_image = copy(self.depth_image)
             self.color_image = None
             self.depth_image = None
-
             depth_image = np.where(
                 (depth_image > self._min_depth) & (depth_image < self._max_depth),
                 depth_image,
@@ -154,8 +162,7 @@ class PieceDetectionComponent(LifecycleComponent):
                 color_o3d, depth_o3d, depth_scale=1000.0, depth_trunc=3.0, convert_rgb_to_intensity=False
             )
             pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic_o3d)
-
-            # Filtrer les couleurs
+            # Color filtering
             colors = np.asarray(pcd.colors)
             mask = np.all(
                 (colors >= (self._target_color - self._negative_tolerance))
@@ -163,8 +170,7 @@ class PieceDetectionComponent(LifecycleComponent):
                 axis=1,
             )
             pcd_filtered = pcd.select_by_index(np.where(mask)[0])
-
-            # Clustering pour détecter la pièce
+            # Clustering to detect the piece
             points = np.asarray(pcd_filtered.points)
             clustering = DBSCAN(eps=0.01, min_samples=10).fit(points)
             labels = clustering.labels_
@@ -173,39 +179,34 @@ class PieceDetectionComponent(LifecycleComponent):
             mask = labels == target_label
             piece_points = points[mask]
             if len(piece_points) > self._max_cluster_size:
-                self.get_logger().warning(f"Cluster trop gros : {len(piece_points)} points. Détection ignorée.")
+                self.get_logger().warning(f"Cluster too large: {len(piece_points)} points. Detection ignored.")
                 self.set_predicate("is_piece_confirmed", False)
                 self.set_predicate("is_piece_not_confirmed", True)
                 return
             pcd_piece = o3d.geometry.PointCloud()
             pcd_piece.points = o3d.utility.Vector3dVector(piece_points)
-
-            # Calculer la transformation
+            # Compute transformation
             self.pcd_model.points = o3d.utility.Vector3dVector(self.initial_model_points)
             average_position_piece = np.mean(piece_points, axis=0)
             model_points = np.asarray(self.pcd_model.points)
             average_position_model = np.mean(model_points, axis=0)
             translation = average_position_piece - average_position_model
-
             initial_transformation = np.eye(4)
             initial_transformation[:3, 3] = translation
             self.pcd_model.transform(initial_transformation)
             self.pcd_model = self.pcd_model.voxel_down_sample(self._voxel_size)
             pcd_piece = pcd_piece.voxel_down_sample(self._voxel_size)
-
-            # Recherche des meilleures rotations et calcul du fit
+            # Find best rotations and compute fit
             rot_Y, fit_Y = self.find_best_rotation(self.pcd_model, pcd_piece, axis="y", angle_range=(-30, 35))
             rot_X, fit_X = self.find_best_rotation(self.pcd_model, pcd_piece, axis="x", angle_range=(-30, 35))
             rot_Z, fit_Z = self.find_best_rotation(self.pcd_model, pcd_piece, axis="z", angle_range=(-45, 50))
             best_rotation_matrix = rot_X @ rot_Y @ rot_Z
-
             fit_mean = (fit_X + fit_Y + fit_Z) / 3
             fit_threshold = self.get_parameter_value("fit_threshold")
             self.set_predicate("is_piece_confirmed", bool(fit_mean > fit_threshold))
             self.set_predicate("is_piece_not_confirmed", bool(fit_mean <= fit_threshold))
             self.get_logger().info(f"Fit mean: {fit_mean:.1f}% (threshold: {fit_threshold}%)")
-
-            # Transformation globale
+            # Global transformation
             global_transformation = np.eye(4)
             translation_matrix = np.eye(4)
             translation_matrix[:3, 3] = average_position_piece
@@ -213,43 +214,35 @@ class PieceDetectionComponent(LifecycleComponent):
             rotation_matrix_4x4 = np.eye(4)
             rotation_matrix_4x4[:3, :3] = best_rotation_matrix
             global_transformation = global_transformation @ rotation_matrix_4x4
-
             pose = self.get_parameter_value("camera_pose_world")
             camera_orientation_world = R.from_quat([pose[4], pose[5], pose[6], pose[3]])
             camera_orientation_matrix = camera_orientation_world.as_matrix()
             camera_transformation_world = np.eye(4)
             camera_transformation_world[:3, :3] = camera_orientation_matrix
             camera_transformation_world[:3, 3] = pose[:3]
-
             piece_transformation_world = camera_transformation_world @ global_transformation
-
             piece_position_world = piece_transformation_world[:3, 3]
             piece_orientation_world = piece_transformation_world[:3, :3]
             piece_quaternion = R.from_matrix(piece_orientation_world).as_quat()
             piece_quaternion = [piece_quaternion[3], piece_quaternion[0], piece_quaternion[1], piece_quaternion[2]]
-
             self.piece_pose = sr.CartesianPose("piece", "world")
             self.piece_pose.set_position(piece_position_world)
             self.piece_pose.set_orientation(piece_quaternion)
             self.get_logger().info(f"pose: {self.piece_pose}")
-
         except Exception as e:
-             self.get_logger().error(f"Erreur dans on_step_callback : {e}")
-
-    # Method to find the best rotation angle with fit percentage
+             self.get_logger().error(f"Error in on_step_callback: {e}")
+    # ====== ROTATION FITTING UTILITY ======
     def find_best_rotation(self, pcd_model, pcd_piece, axis, angle_range, angle_step=5, fit_tolerance=0.01):
         def calculate_average_distance(source_points, target_points):
             tree = cKDTree(target_points)
             distances, _ = tree.query(source_points, k=1)
             return np.mean(distances), distances
-
         initial_model_points = np.asarray(pcd_model.points).copy()
         center_of_model = np.mean(initial_model_points, axis=0)
         best_angle = None
         min_distance = float("inf")
         best_distances = None
         angles = np.arange(*angle_range, angle_step)
-
         for angle in angles:
             pcd_model.points = o3d.utility.Vector3dVector(initial_model_points)
             angle_rad = np.radians(angle)
@@ -267,7 +260,6 @@ class PieceDetectionComponent(LifecycleComponent):
                 min_distance = avg_distance
                 best_angle = angle
                 best_distances = distances
-
         pcd_model.points = o3d.utility.Vector3dVector(initial_model_points)
         angle_rad = np.radians(best_angle)
         best_rotation_vector = [
@@ -277,8 +269,6 @@ class PieceDetectionComponent(LifecycleComponent):
         ]
         best_rotation_matrix = o3d.geometry.get_rotation_matrix_from_axis_angle(best_rotation_vector)
         pcd_model.rotate(best_rotation_matrix, center=center_of_model)
-
-        # Calcul du pourcentage de fit
         fit_percent = 0.0
         if best_distances is not None and len(best_distances) > 0:
             fit_percent = np.sum(best_distances < fit_tolerance) / len(best_distances) * 100

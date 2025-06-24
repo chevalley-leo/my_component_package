@@ -1,3 +1,33 @@
+"""
+creality_interface.py
+
+Description:
+    Author: Léo Chevalley
+    This script reads a DXF file, converts its geometric entities to G-code, and sends the G-code to a GRBL-compatible laser engraving machine via serial communication. It supports lines, arcs, circles, ellipses, polylines, and points. The script is intended for use with laser engravers for precise 2D path following and integrates with the modulo_components framework.
+
+License:
+    MIT License
+    Copyright (c) 2025 Léo Chevalley
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+"""
+
+# ====== IMPORTS ======
 from modulo_components.component import Component
 import state_representation as sr
 import serial
@@ -6,15 +36,16 @@ import ezdxf
 import math
 from threading import Event
 
-# ======== CONFIGURATION ========
-SCALE_FACTOR = 1.0       # Facteur de mise à l'échelle
-OFFSET_X = 0          # Décalage sur l'axe X
-OFFSET_Y = 0       # Décalage sur l'axe Y
-LASER_POWER = 300       # Puissance du laser (0 à 1000)
-FEED_RATE = 800          # Vitesse de déplacement en mm/min
+# ====== CONFIGURATION ======
+SCALE_FACTOR = 1.0       # Scale factor
+OFFSET_X = 0             # X axis offset
+OFFSET_Y = 0             # Y axis offset
+LASER_POWER = 300        # Laser power (0 to 1000)
+FEED_RATE = 800          # Movement speed in mm/min
 
-
+# ====== CREALITY INTERFACE CLASS ======
 class CrealityInterface(Component):
+    # ====== INITIALIZATION ======
     def __init__(self, node_name: str, *args, **kwargs):
         super().__init__(node_name, *args, **kwargs)
         self.add_parameter(sr.Parameter("usb_path", sr.ParameterType.STRING), "USB path")
@@ -26,27 +57,29 @@ class CrealityInterface(Component):
         self.add_predicate("laser_finished", False)
         self.add_service("run_gcode", self._run_gcode)
 
+    # ====== SERVICE HANDLER ======
     def _run_gcode(self, msg):
         self.set_predicate("laser_finished", False)
         self.get_logger().info(f"Received service call with payload {msg}")
         gcode_lines = self._dxf_to_gcode(msg)
         if not gcode_lines:
-            self.get_logger().error(f"Erreur lors de la conversion du fichier {msg}.")
-            return {"success": False, "message": "Erreur lors de la conversion du fichier DXF."}
+            self.get_logger().error(f"Error converting file {msg}.")
+            return {"success": False, "message": "Error converting DXF file."}
         self.send_gcode_to_machine(gcode_lines)
         time.sleep(0.5)
         self.set_predicate("laser_finished", False)
-        return {"success": True, "message": "G-code envoyé avec succès."}
+        return {"success": True, "message": "G-code sent successfully."}
 
+    # ====== SERIAL COMMUNICATION ======
     def send_gcode_to_machine(self, gcode_lines):
         try:
             with serial.Serial(self.get_parameter_value("usb_path"), self.get_parameter_value("baud_rate"), timeout=1) as ser:
                 time.sleep(2)
-                ser.write(b"\r\n\r\n")  # "Réveiller" le contrôleur
+                ser.write(b"\r\n\r\n")  # Wake up controller
                 time.sleep(2)
                 ser.flushInput()
 
-                self.initialize_machine(ser, do_homing=True)  # Active le homing automatiquement
+                self.initialize_machine(ser, do_homing=True)  # Homing automatically
 
                 for line in gcode_lines:
                     command = line.strip() + '\n'
@@ -55,28 +88,28 @@ class CrealityInterface(Component):
                         response = ser.readline()
                         if response:
                             decoded = response.strip().decode()
-                            self.get_logger().debug(f"Réponse: {decoded}")
+                            self.get_logger().debug(f"Response: {decoded}")
                             if decoded == "ok" or "error" in decoded:
                                 break
-                        time.sleep(0.01)  # Petite pause pour laisser GRBL traiter
+                        time.sleep(0.01)  # Small pause for GRBL processing
 
-                # Attendre que la machine soit vraiment Idle
+                # Wait until the machine is really Idle
                 self.wait_until_idle(ser)
                 self.set_predicate("laser_finished", True)
 
         except serial.SerialException as e:
-            self.get_logger().error(f"Erreur de communication série: {e}")
+            self.get_logger().error(f"Serial communication error: {e}")
 
     def wait_until_idle(self, ser, timeout=120):
-        """Attend que la machine GRBL soit en état Idle (fin du job)."""
-        self.get_logger().warning("Attente que la machine soit Idle...")
+        """Wait until the GRBL machine is Idle (job finished)."""
+        self.get_logger().info("Waiting for machine to be Idle...")
         start_time = time.time()
         idle_counter = 0
         while True:
             ser.write(b'?\n')
             grbl_out = ser.readline()
             grbl_response = grbl_out.strip().decode('utf-8')
-            self.get_logger().warning(f"Réponse GRBL: {grbl_response}")
+            self.get_logger().info(f"GRBL Response: {grbl_response}")
             if "ok" in grbl_response or "Idle" in grbl_response:
                 idle_counter += 1
             else:
@@ -84,26 +117,26 @@ class CrealityInterface(Component):
             if idle_counter > 15:
                 break
             if time.time() - start_time > timeout:
-                self.get_logger().warning("Timeout en attendant que la machine soit Idle.")
+                self.get_logger().warning("Timeout waiting for machine to be Idle.")
                 break
             time.sleep(0.2)
 
+    # ====== PARAMETER VALIDATION ======
     def on_validate_parameter_callback(self, parameter: sr.Parameter) -> bool:
         if parameter.get_name() == "usb_path" and parameter.is_empty():
             self.get_logger().error("Provide a non empty value for parameter 'usb_path'")
             return False
         return True
     
-    #q6uCINCoaVKV1c9IkKwx
+# ====== UTILITY FUNCTIONS ======
 
-    #e4396706-b9a5-4f62-ad89-6198ee98d6fc.Xw19Ca0q1aD1CxHVtrSdMvna2yMHco6502t9Qnk8CUxj
-
+    # ====== WAKE UP THE MACHINE ======
     def send_wake_up(self):
-        # Wake up, hit enter a few times to wake the Printrbot
         self._serial.write(str.encode("\r\n\r\n"))
-        time.sleep(0.2)   # Wait for Printrbot to initialize
+        time.sleep(0.2)   # Wait for controller to initialize
         self._serial.flushInput()  # Flush startup text in serial input
 
+    # ====== GCODE UTILITY FUNCTIONS ======
     def remove_comment(string):
         if (string.find(';') == -1):
             return string
@@ -111,7 +144,6 @@ class CrealityInterface(Component):
             return string[:string.index(';')]
 
     def remove_eol_chars(string):
-        # removed \n or traling spaces
         return string.strip()
     
     def wait_for_movement_completion(self, cleaned_line):
@@ -126,10 +158,8 @@ class CrealityInterface(Component):
                 grbl_response = grbl_out.strip().decode('utf-8')
 
                 if grbl_response != 'ok':
-
                     if grbl_response.find('Idle') > 0:
                         idle_counter += 1
-
                 if idle_counter > 10:
                     break
     
@@ -165,26 +195,24 @@ class CrealityInterface(Component):
         arc_pts.append((x1, y1))
         return arc_pts
 
-
     def _dxf_to_gcode(self, filename):
         try:
             doc = ezdxf.readfile(filename)
         except IOError:
-            self.get_logger().error(f"Erreur lors de l'ouverture du fichier {filename}.")
+            self.get_logger().error(f"Error opening file {filename}.")
             return []
         except ezdxf.DXFStructureError:
-            self.get_logger().error(f"Le fichier {filename} n'est pas un fichier DXF valide.")
+            self.get_logger().error(f"File {filename} is not a valid DXF file.")
             return []
 
         msp = doc.modelspace()
-        gcode = ["G21", "G90", self._laser_off()]  # Init de base
+        gcode = ["G21", "G90", self._laser_off()]  # Basic initialization
 
-        # Traitement des entités DXF
+        # Process DXF entities
         for entity in msp:
             self.get_logger().info(f"Entity Type: {entity.dxftype()}, Data: {entity.dxf}")
 
             if entity.dxftype() == "LINE":
-                self.get_logger().info(f"Entity: {entity}")
                 x1, y1 = self._apply_offset(entity.dxf.start.x, entity.dxf.start.y)
                 x2, y2 = self._apply_offset(entity.dxf.end.x, entity.dxf.end.y)
                 gcode.append(self._laser_off())
@@ -194,7 +222,6 @@ class CrealityInterface(Component):
                 gcode.append(self._laser_off())
 
             elif entity.dxftype() == "ARC":
-                self.get_logger().info(f"Entity: {entity}")
                 cx, cy = self._apply_offset(entity.dxf.center.x, entity.dxf.center.y)
                 radius = entity.dxf.radius * SCALE_FACTOR
                 start_angle = math.radians(entity.dxf.start_angle)
@@ -207,7 +234,6 @@ class CrealityInterface(Component):
                     x = cx + radius * math.cos(angle)
                     y = cy + radius * math.sin(angle)
                     points.append((x, y))
-                    #self.get_logger().info(f"Point {i}: ({x}, {y})")
 
                 if points:
                     gcode.append(self._laser_off())
@@ -218,7 +244,6 @@ class CrealityInterface(Component):
                     gcode.append(self._laser_off())
 
             elif entity.dxftype() == "CIRCLE":
-                self.get_logger().info(f"Entity: {entity}")
                 cx, cy = self._apply_offset(entity.dxf.center.x, entity.dxf.center.y)
                 radius = entity.dxf.radius * SCALE_FACTOR
 
@@ -235,7 +260,6 @@ class CrealityInterface(Component):
                     gcode.append(self._laser_off())
 
             elif entity.dxftype() == "ELLIPSE":
-                self.get_logger().info(f"Entity: {entity}")
 
                 center = entity.dxf.center
                 major_axis = entity.dxf.major_axis
@@ -246,7 +270,6 @@ class CrealityInterface(Component):
                 num_points = 200
                 points = []
 
-                # Longueur du vecteur major_axis
                 major_length = math.hypot(major_axis.x, major_axis.y)
 
                 for i in range(num_points + 1):
@@ -254,21 +277,17 @@ class CrealityInterface(Component):
                     cos_t = math.cos(t)
                     sin_t = math.sin(t)
 
-                    # Point sur ellipse en coordonnées locales
                     x_ell = major_length * cos_t
                     y_ell = major_length * ratio * sin_t
 
-                    # Rotation selon direction du vecteur major_axis
                     angle = math.atan2(major_axis.y, major_axis.x)
                     x_rot = x_ell * math.cos(angle) - y_ell * math.sin(angle)
                     y_rot = x_ell * math.sin(angle) + y_ell * math.cos(angle)
 
-                    # Position globale avec offset
                     x = center.x + x_rot
                     y = center.y + y_rot
                     x_off, y_off = self._apply_offset(x, y)
                     points.append((x_off, y_off))
-                    #self.get_logger().info(f"Ellipse point {i}: ({x_off}, {y_off})")
 
                 if points:
                     gcode.append(self._laser_off())
@@ -278,15 +297,12 @@ class CrealityInterface(Component):
                         gcode.append(self._engrave_move(x, y))
                     gcode.append(self._laser_off())
 
-
             elif entity.dxftype() == "LWPOLYLINE":
-                self.get_logger().info(f"Entity: {entity}")
-              
-                vertices = list(entity.vertices())  # [(x, y, start_width, end_width, bulge), ...]
+                vertices = list(entity.vertices())
                 if vertices:
                     x0, y0 = self._apply_offset(vertices[0][0], vertices[0][1])
                     gcode.append(self._laser_off())
-                    self.get_logger().info(f"Déplacement vers le point de départ: ({x0}, {y0})")
+                    self.get_logger().info(f"Move to start point: ({x0}, {y0})")
                     gcode.append(self._rapid_move(x0, y0))
                     gcode.append(self._laser_on())
                     for i in range(1, len(vertices)):
@@ -305,32 +321,30 @@ class CrealityInterface(Component):
                         gcode.append(self._engrave_move(x0, y0))
                     gcode.append(self._laser_off())
 
-
             elif entity.dxftype() == "POINT":
-                self.get_logger().info(f"Entity: {entity}")
                 x, y = self._apply_offset(entity.dxf.location.x, entity.dxf.location.y)
                 gcode.append(self._laser_off())
                 gcode.append(self._rapid_move(x, y))
                 gcode.append(self._laser_on())
 
-
         gcode.append(self._laser_off())
-        gcode.append("G0 X0 Y0")  # Retour origine
+        gcode.append("G0 X0 Y0")  # Return to origin
         return gcode
 
+    # ====== MACHINE INITIALIZATION ======
     def initialize_machine(self, ser, do_homing=True):
-        print("Initialisation de la machine...")
+        print("Initializing machine...")
         if do_homing:
-            ser.write(b"$H\n")  # Lancer le homing
+            ser.write(b"$H\n")  # Start homing
             time.sleep(1.5)
-        ser.write(b"$X\n")  # Déverrouiller la machine si nécessaire
+        ser.write(b"$X\n")  # Unlock machine if needed
         time.sleep(0.2)
-        ser.write(b"G21\n")  # Unités en mm
+        ser.write(b"G21\n")  # Set units to mm
         time.sleep(0.2)
-        ser.write(b"G90\n")  # Mode absolu
+        ser.write(b"G90\n")  # Absolute mode
         time.sleep(0.2)
         ser.write(b"M5\n")   # Laser OFF
         time.sleep(0.2)
-        ser.write(b"G92 X0 Y0\n")  # Position de départ à (0,0)
+        ser.write(b"G92 X0 Y0\n")  # Set start position to (0,0)
         time.sleep(0.2)
-        print("Machine initialisée et prête.")
+        print("Machine initialized and ready.")
